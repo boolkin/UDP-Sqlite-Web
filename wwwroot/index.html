@@ -1,1 +1,233 @@
-test
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sensor Dashboard</title>
+<link rel="stylesheet" href="style.css">
+<script src="chart.umd.min.js"></script>
+<script src="chartjs-adapter-date-fns.bundle.min.js"></script>
+</head>
+<body>
+
+<!-- TOOLBAR -->
+<header class="toolbar">
+  <div class="logo">Sensor Dashboard</div>
+  <div class="sep"></div>
+  <div class="date-group">
+    <label>С</label>
+    <input type="datetime-local" id="globalFrom">
+  </div>
+  <div class="date-group">
+    <label>По</label>
+    <input type="datetime-local" id="globalTo">
+  </div>
+  <button class="btn btn-ghost btn-sm" onclick="applyGlobalRange()" title="Применить ко всем виджетам">
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+  </button>
+  <div class="sep"></div>
+  <div class="date-group" style="gap:3px">
+    <button class="btn btn-ghost btn-sm" onclick="setPeriod(1)" title="За 1 час">1ч</button>
+    <button class="btn btn-ghost btn-sm" onclick="setPeriod(2)" title="За 2 часа">2ч</button>
+    <button class="btn btn-ghost btn-sm" onclick="setPeriod(6)" title="За 6 часов">6ч</button>
+    <button class="btn btn-ghost btn-sm" onclick="setPeriod(12)" title="За 12 часов">12ч</button>
+    <button class="btn btn-ghost btn-sm" onclick="setPeriod(24)" title="За 24 часа">24ч</button>
+  </div>
+  <div class="sep"></div>
+  <div class="date-group" style="gap:3px">
+    <button class="btn btn-ghost btn-sm" onclick="setTimePreset('19:59:59')" title="Установить время До 19:59:59">19:59</button>
+    <button class="btn btn-ghost btn-sm" onclick="setTimePreset('07:59:59')" title="Установить время До 07:59:59">07:59</button>
+  </div>
+  <div class="spacer"></div>
+  <button class="btn btn-primary btn-sm" onclick="openAddModal()">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    Виджет
+  </button>
+  <div class="sep"></div>
+  <button class="btn btn-ghost btn-sm" onclick="saveToLS()" title="Сохранить в LocalStorage (Ctrl+S)">
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+    Сохранить
+  </button>
+  <button class="btn btn-ghost btn-sm" onclick="exportConfig()" title="Экспорт конфигурации в файл">
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+    Файл
+  </button>
+  <button class="btn btn-ghost btn-sm" onclick="$('importInput').click()" title="Импорт конфигурации">
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+    Импорт
+  </button>
+  <input type="file" id="importInput" accept=".json" style="display:none" onchange="importConfig(event)">
+  <div class="sep"></div>
+  <button class="btn btn-ghost btn-sm" onclick="openSettings()" title="Настройки сервера">
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+  </button>
+  <button class="btn btn-ghost btn-sm" onclick="updateWidgetSpans(); window.print()" title="Печать">
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+  </button>
+</header>
+
+<!-- DASHBOARD -->
+<main class="dashboard-area" id="dashboardArea">
+  <div class="empty-state" id="emptyState">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+      <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
+      <rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/>
+    </svg>
+    <h3>Дашборд пуст</h3>
+    <p>Нажмите «Виджет» на панели инструментов<br>чтобы добавить график, диаграмму или таблицу</p>
+  </div>
+  <div id="widgetsContainer"></div>
+</main>
+
+<!-- STATUS BAR -->
+<footer class="status-bar">
+  <span class="status-dot idle" id="statusDot"></span>
+  <span id="statusText">Ожидание</span>
+  <span style="color:var(--border-color)">|</span>
+  <span id="serverDisplay">—</span>
+  <span style="color:var(--border-color)">|</span>
+  <span id="widgetCount">0 виджетов</span>
+  <span style="flex:1"></span>
+  <span id="lastRefresh"></span>
+</footer>
+
+<!-- ADD/EDIT WIDGET MODAL -->
+<div class="modal-overlay" id="addModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="addModalTitle">Добавить виджет</h3>
+      <button class="modal-close" onclick="closeModal('addModal')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>Тип виджета</label>
+        <select id="fType" onchange="onTypeChange()">
+          <option value="line-chart">📈 График (история значений)</option>
+          <option value="pie-chart">🍩 Круговая диаграмма (статистика времени)</option>
+          <option value="bar-chart">📊 Столбчатая диаграмма (статистика)</option>
+          <option value="table">📋 Таблица</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>ID тега датчика</label>
+        <div class="tagid-row">
+          <select id="fTagIdSelect" onchange="onTagIdSelectChange()">
+            <option value="">-- выбрать --</option>
+          </select>
+          <input type="text" id="fTagId" placeholder="1">
+        </div>
+        <div class="hint">Выберите из списка или введите вручную. Для графика — несколько через запятую (1,2,3)</div>
+      </div>
+      <div class="form-group">
+        <label>Заголовок</label>
+        <input type="text" id="fTitle" placeholder="Автоматически">
+      </div>
+      <div class="form-group" id="fSourceGroup" style="display:none">
+        <label>Источник данных</label>
+        <select id="fSource">
+          <option value="history">История (rawdata)</option>
+          <option value="statistics">Статистика</option>
+        </select>
+      </div>
+      <div class="form-group" id="fTableGroup" style="display:none">
+        <label>Таблица статистики</label>
+        <select id="fTableName">
+          <option value="">-- авто --</option>
+        </select>
+        <div class="hint">Выберите таблицу статистики (AvgData — средние значения, WorkTime — время работы)</div>
+      </div>
+      <div class="form-group" id="fMetricGroup" style="display:none">
+        <label>Метрика</label>
+        <select id="fMetric">
+          <!-- Bar chart options -->
+          <option value="all" class="opt-bar">Все вместе</option>
+          <option value="avg" class="opt-bar">Среднее значение</option>
+          <option value="work" class="opt-bar">Время работы</option>
+          <option value="period" class="opt-bar">Период</option>
+          <option value="uptime" class="opt-bar">Коэффициент работы (%)</option>
+          <!-- Pie chart options -->
+          <option value="work-idle" class="opt-pie">Работа / Простой</option>
+          <option value="work-by-period" class="opt-pie">Работа по периодам</option>
+          <option value="avg-by-period" class="opt-pie">Ср. значение по периодам</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>С</label>
+          <input type="datetime-local" id="fFrom">
+        </div>
+        <div class="form-group">
+          <label>По</label>
+          <input type="datetime-local" id="fTo">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Ширина (px)</label>
+          <input type="number" id="fWidth" value="500" min="300" max="2400">
+        </div>
+        <div class="form-group">
+          <label>Высота (px)</label>
+          <input type="number" id="fHeight" value="340" min="220" max="1600">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Шаг данных (сек)</label>
+        <input type="number" id="fStep" value="4" min="1" max="3600">
+        <div class="hint">Авто-расчёт: коэффициент × часы периода. 0 = автоматически</div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('addModal')">Отмена</button>
+      <button class="btn btn-primary" id="addModalSave" onclick="saveWidget()">Добавить</button>
+    </div>
+  </div>
+</div>
+
+<!-- SETTINGS MODAL -->
+<div class="modal-overlay" id="settingsModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Настройки</h3>
+      <button class="modal-close" onclick="closeModal('settingsModal')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>URL сервера данных</label>
+        <input type="text" id="sServerUrl" placeholder="http://127.0.0.1:8085/api/">
+      </div>
+      <div class="form-group">
+        <label>Коэффициент шага за 1 час (по умолчанию 4)</label>
+        <input type="number" id="sStepCoeff" value="4" min="1" max="60">
+        <div class="hint">За 1 час: шаг=4 → ~450 точек. За 2ч: шаг=8 и т.д.</div>
+      </div>
+      <div class="form-group">
+        <label>Автообновление (сек, 0 = выкл)</label>
+        <input type="number" id="sRefresh" value="0" min="0" max="3600">
+      </div>
+      <div class="form-group">
+        <label>Колонок при печати</label>
+        <select id="sPrintCols">
+          <option value="1">1</option>
+          <option value="2">2</option>
+          <option value="3" selected>3</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('settingsModal')">Отмена</button>
+      <button class="btn btn-primary" onclick="saveSettings()">Сохранить</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST CONTAINER -->
+<div class="toast-container" id="toasts"></div>
+
+<script src="app.js"></script>
+</body>
+</html>

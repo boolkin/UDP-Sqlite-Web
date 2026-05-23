@@ -1,0 +1,8 @@
+{
+  "serverUrl": "http://127.0.0.1:8085/api/",
+  "stepCoefficient": 4,
+  "refreshInterval": 0,
+  "printCols": 3,
+  "widgets": [],
+  "zCounter": 10
+}
