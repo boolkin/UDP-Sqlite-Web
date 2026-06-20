@@ -33,7 +33,16 @@ public class DatabaseService
     {
         using var connection = new SqliteConnection(_connectionString);
         connection.Open();
+        using (var command = connection.CreateCommand())
+        {
+            // Включаем WAL режим
+            command.CommandText = "PRAGMA journal_mode = WAL;";
+            command.ExecuteNonQuery();
 
+            // Дополнительно: оптимизируем синхронизацию с диском для максимальной скорости
+            command.CommandText = "PRAGMA synchronous = NORMAL;";
+            command.ExecuteNonQuery();
+        }
         foreach (var tableName in _tables)
         {
             var columns = new List<string> { "timestamp TEXT" };
